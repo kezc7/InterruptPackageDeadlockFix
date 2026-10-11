@@ -2,7 +2,7 @@
 
 An SKSE plugin that fixes a vanilla engine **freeze** (a deadlock) in Skyrim Anniversary Edition **1.6.1170**. It has mostly been seen with a follower in combat.
 
-> **Status: public beta.** The freeze and the fix were both traced with a debugger in a real game. The fix has run in that game, but it hasn't had long, varied play-testing yet. See [Known limitations](#known-limitations).
+> **Status: 1.0.0, first public release.** The freeze and the fix were both traced with a debugger in a real game, and the fix has stepped in there. Reports from more setups are welcome. See [Known limitations](#known-limitations).
 
 ## Requirements
 
@@ -16,7 +16,7 @@ An SKSE plugin that fixes a vanilla engine **freeze** (a deadlock) in Skyrim Ann
 
 ## Installation
 
-**Mod Organizer 2:** *Install a new mod from archive*, pick `InterruptPackageDeadlockFix-1.2.0.zip`, enable it in the left pane, and launch through SKSE (`skse64_loader.exe`).
+**Mod Organizer 2:** *Install a new mod from archive*, pick `InterruptPackageDeadlockFix-1.0.0.zip`, enable it in the left pane, and launch through SKSE (`skse64_loader.exe`).
 
 **Vortex:** drag the zip onto the *Mods* page (or *Install From File*), enable it and deploy. Launch through SKSE.
 
@@ -74,7 +74,7 @@ If there is **no log at all**, check `skse64.log` in the same folder for an `Int
 
 ## Version history
 
-See [CHANGELOG.md](CHANGELOG.md). 1.2.0 adds the runtime check and all-or-nothing install, 1.1.0 covers the second call site, and 1.0.0 was the first fix.
+See [CHANGELOG.md](CHANGELOG.md). 1.0.0 is the first public release; the development builds before it are listed there.
 
 ## Building
 

@@ -64,7 +64,7 @@ These answers come from source review and static reading of the 1.6.1170 code ar
 - A plugin that detours the start of `41331` doesn't interact with this one.
 - No published plugin is known to touch either.
 
-## Verification status (1.2.0)
+## Verification status (1.0.0)
 
 | Kind | What |
 |---|---|
