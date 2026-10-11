@@ -25,74 +25,134 @@
 // thread: 41331+0x374 -> 37474 -> 39187 -> 39803 -> 20164 waiting to write
 // the player's lock its own thread had read-locked at 41331+0xC8). Both
 // call sites are redirected; each is checked byte for byte first.
+//
+// 1.2.0 (2026-10-11): runs only on 1.6.1170; both sites are checked before
+// either is patched, and if either doesn't match neither is: deferring
+// +0x171 leaves the actor's interrupt package in place for the rest of that
+// 41331 call, and the checks after it can then lead to +0x36F, so +0x171
+// alone could be worse than vanilla. The log names the call site for each
+// deferral. Behaviour of the deferral itself is unchanged.
 
 #include "pch.h"
 
+#include "CallSite.h"
+
 #include <atomic>
-#include <cstring>
+#include <format>
+#include <iterator>
+#include <string>
 
 namespace
 {
     constexpr std::string_view kName = "InterruptPackageDeadlockFix";
+    constexpr REL::Version     kVersion{ 1, 2, 0, 0 };
+    constexpr REL::Version     kRuntime = SKSE::RUNTIME_SSE_1_6_1170;
 
     using EndInterruptPackageFn = void (*)(RE::Actor*, bool);
     EndInterruptPackageFn g_endInterruptPackage = nullptr;
-    std::atomic<std::uint32_t> g_deferred{ 0 };
 
-    void DeferredEndInterruptPackage(RE::Actor* a_actor, bool a_skipDialogue)
+    // Log the first 20, then every 100th.
+    bool ShouldLog(std::uint32_t a_count)
+    {
+        return a_count <= 20 || a_count % 100 == 0;
+    }
+
+    void Defer(RE::Actor* a_actor, bool a_skipDialogue, std::uintptr_t a_offset, std::atomic<std::uint32_t>& a_count)
     {
         if (!a_actor) {
             return;
         }
-        const auto count = ++g_deferred;
-        if (count <= 20 || count % 100 == 0) {
-            SKSE::log::info("deferred EndInterruptPackage #{} for {:08X} until the AI update lets go of the player's lock",
-                            count, a_actor->GetFormID());
+        if (const auto count = ++a_count; ShouldLog(count)) {
+            SKSE::log::info("+0x{:X}: deferred EndInterruptPackage #{} for {:08X} until the AI update lets go of the player's lock",
+                            a_offset, count, a_actor->GetFormID());
         }
+        // The game's own reference count (BSHandleRefObject), the one 41331
+        // holds on this actor while it runs: the actor can't be freed before
+        // the task has run.
         RE::NiPointer<RE::Actor> keep{ a_actor };
         SKSE::GetTaskInterface()->AddTask([keep, a_skipDialogue]() {
-            if (keep && !keep->IsDeleted()) {
-                g_endInterruptPackage(keep.get(), a_skipDialogue);
+            if (keep->IsDeleted()) {
+                static std::atomic<std::uint32_t> skipped{ 0 };
+                if (const auto count = ++skipped; ShouldLog(count)) {
+                    SKSE::log::info("skipped deferred EndInterruptPackage #{} for {:08X}: deleted before the main thread got to it",
+                                    count, keep->GetFormID());
+                }
+                return;
             }
+            g_endInterruptPackage(keep.get(), a_skipDialogue);
         });
     }
 
-    // One call site: "xor edx, edx; mov rcx, rbx; call 37474", checked byte
-    // for byte, then sent to DeferredEndInterruptPackage.
-    bool InstallAt(std::uintptr_t a_function, std::uintptr_t a_offset, std::uintptr_t a_target)
+    // One per call site, so the log says which one fired.
+    template <std::uintptr_t Offset>
+    void DeferredEndInterruptPackage(RE::Actor* a_actor, bool a_skipDialogue)
     {
-        static constexpr std::uint8_t kSetup[] = { 0x33, 0xD2, 0x48, 0x8B, 0xCB, 0xE8 };
-        const auto site = a_function + a_offset;
-        const auto* bytes = reinterpret_cast<const std::uint8_t*>(site - 5);
-        if (std::memcmp(bytes, kSetup, sizeof(kSetup)) != 0) {
-            SKSE::log::warn("+0x{:X} not installed: the call site doesn't match ({:02X} {:02X} {:02X} {:02X} {:02X} {:02X}); another mod or game version?",
-                            a_offset, bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5]);
-            return false;
-        }
-        std::int32_t rel = 0;
-        std::memcpy(&rel, reinterpret_cast<const void*>(site + 1), sizeof(rel));
-        if (site + 5 + rel != a_target) {
-            SKSE::log::warn("+0x{:X} not installed: the call there doesn't go to Actor::EndInterruptPackage", a_offset);
-            return false;
-        }
-        const auto original = reinterpret_cast<EndInterruptPackageFn>(
-            SKSE::GetTrampoline().write_call<5>(site, &DeferredEndInterruptPackage, true));
-        if (!g_endInterruptPackage) {
-            g_endInterruptPackage = original;
-        }
-        SKSE::log::info("installed at SkyrimSE+{:X} (41331+0x{:X}; EndInterruptPackage deferred out of the player's read lock)",
-                        site - REL::Module::get().base(), a_offset);
-        return true;
+        static std::atomic<std::uint32_t> count{ 0 };
+        Defer(a_actor, a_skipDialogue, Offset, count);
     }
 
-    void Install()
+    std::string Hex(const std::uint8_t* a_bytes, std::size_t a_count)
     {
+        std::string out;
+        for (std::size_t i = 0; i < a_count; ++i) {
+            out += std::format("{}{:02X}", i ? " " : "", a_bytes[i]);
+        }
+        return out;
+    }
+
+    struct Site
+    {
+        std::uintptr_t offset;
+        std::uintptr_t thunk;
+    };
+
+    constexpr std::uintptr_t kSites[] = { 0x171, 0x36F };
+
+    // Both call sites are checked before either is patched: all or nothing.
+    bool Install()
+    {
+        if (!SKSE::GetTaskInterface()) {
+            SKSE::log::error("not installed: SKSE gave no task interface");
+            return false;
+        }
+
         const auto function = REL::Relocation<std::uintptr_t>{ REL::ID(41331) }.address();
         const auto target = REL::Relocation<std::uintptr_t>{ REL::ID(37474) }.address();
-        SKSE::AllocTrampoline(2 * 14);
-        for (const std::uintptr_t offset : { 0x171u, 0x36Fu }) {
-            InstallAt(function, offset, target);
+        const Site sites[] = {
+            { kSites[0], reinterpret_cast<std::uintptr_t>(&DeferredEndInterruptPackage<kSites[0]>) },
+            { kSites[1], reinterpret_cast<std::uintptr_t>(&DeferredEndInterruptPackage<kSites[1]>) },
+        };
+
+        for (const auto& site : sites) {
+            const auto  address = function + site.offset;
+            const auto* window = reinterpret_cast<const std::uint8_t*>(address - CallSite::kLead);
+            switch (CallSite::Verify(window, address, target)) {
+            case CallSite::Result::kOk:
+                break;
+            case CallSite::Result::kBytesDiffer:
+                SKSE::log::error("not installed: 41331+0x{:X} doesn't match ({}); another mod may have patched it. Nothing was changed.",
+                                 site.offset, Hex(window, CallSite::kWindow));
+                return false;
+            case CallSite::Result::kWrongTarget:
+                SKSE::log::error("not installed: the call at 41331+0x{:X} doesn't go to Actor::EndInterruptPackage; another mod may have hooked it. Nothing was changed.",
+                                 site.offset);
+                return false;
+            }
         }
+
+        // Both verified as direct calls to 37474, so that is what the
+        // deferred task calls. Set before patching.
+        g_endInterruptPackage = reinterpret_cast<EndInterruptPackageFn>(target);
+
+        SKSE::AllocTrampoline(std::size(sites) * 14);
+        auto& trampoline = SKSE::GetTrampoline();
+        for (const auto& site : sites) {
+            const auto address = function + site.offset;
+            trampoline.write_call<5>(address, site.thunk);
+            SKSE::log::info("installed at SkyrimSE+{:X} (41331+0x{:X}; EndInterruptPackage deferred out of the player's read lock)",
+                            address - REL::Module::get().base(), site.offset);
+        }
+        return true;
     }
 }
 
@@ -101,30 +161,40 @@ namespace
     constexpr SKSE::PluginVersionData MakePluginVersionData()
     {
         SKSE::PluginVersionData version{};
-        version.PluginVersion({ 1, 1, 0, 0 });
+        version.PluginVersion(kVersion);
         version.PluginName(kName);
         version.AuthorName("KezC7");
         version.UsesAddressLibrary();
-        version.UsesNoStructs();
+        version.UsesUpdatedStructs();
         return version;
     }
 }
 
 SKSE_PLUGIN_VERSION = MakePluginVersionData();
 
-SKSE_EXPORT bool SKSEPlugin_Query(SKSE::QueryInterface*, SKSE::PluginInfo* a_info)
+// Only the SE and VR loaders call this (the AE loader reads
+// SKSEPlugin_Version), and this build is for AE 1.6.1170 only: decline.
+SKSE_EXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::PluginInfo* a_info)
 {
     a_info->infoVersion = SKSE::PluginInfo::kVersion;
     a_info->name = kName.data();
-    a_info->version = 2;
-    return true;
+    a_info->version = kVersion.pack();
+    return !a_skse->IsEditor() && a_skse->RuntimeVersion() == kRuntime;
 }
 
 extern "C" __declspec(dllexport) bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse)
 {
-    REL::Module::reset();
     SKSE::Init(a_skse);
-    SKSE::log::info("{} 1.1.0 loading", kName);
-    Install();
+    const auto runtime = REL::Module::get().version();
+    SKSE::log::info("{} {} loading on Skyrim {}", kName, kVersion.string("."), runtime.string("."));
+    // UsesAddressLibrary makes SKSE accept any AE runtime; the offsets and
+    // bytes here were only checked on 1.6.1170, so refuse the rest.
+    if (runtime != kRuntime) {
+        SKSE::log::error("not installed: only Skyrim {} is supported. Nothing was changed.", kRuntime.string("."));
+        return false;
+    }
+    if (!Install()) {
+        SKSE::log::error("the game is unchanged; the freeze this fixes can still happen");
+    }
     return true;
 }

@@ -2,51 +2,80 @@ NAME
 Interrupt Package Deadlock Fix
 
 VERSION
-1.1.0
+1.2.0 (mark as a beta / "test" release on the Files tab)
 
 SUMMARY (one line)
-Fixes a vanilla engine freeze where an AI update waits on itself forever - often seen with a follower in combat.
+SKSE fix for a vanilla engine freeze where an AI update waits on itself forever, often with a follower in combat. AE 1.6.1170 only.
 
-REQUIREMENTS
-SKSE64, Address Library for SKSE Plugins. Skyrim AE 1.6.1170.
+REQUIREMENTS (Nexus "Requirements" section)
+- SKSE64 (for 1.6.1170)
+- Address Library for SKSE Plugins (Anniversary Edition)
 
 SUGGESTED CATEGORY / TAGS
 Category: Bug Fixes. Tags: SKSE, Bug Fix, Stability, AE.
 
+FILE DESCRIPTION (Files tab)
+Skyrim AE 1.6.1170 only. Public beta. Install with your mod manager.
+
 DESCRIPTION (BBCode - paste into the Nexus description editor)
 [size=4][b]Interrupt Package Deadlock Fix[/b][/size]
-Fixes a vanilla engine freeze (a deadlock) in Skyrim AE 1.6.1170.
+Fixes a vanilla engine [b]freeze[/b] (a deadlock) in Skyrim Anniversary Edition [b]1.6.1170[/b]. It has mostly been seen with a follower in combat.
+
+[b]Public beta:[/b] the freeze and the fix were both traced with a debugger in a real game, but the fix needs more play-testing on more setups. Reports are very welcome. See Troubleshooting below.
 
 [size=3][b]The freeze[/b][/size]
-While the game updates AI on a background thread, it holds a read lock on the player's data. In two places it then ends an NPC's [i]interrupt package[/i] - the short behaviour an NPC switches to when something interrupts them - without letting go of that lock.
+While the game updates NPC AI on a background thread, it holds a "read" lock on the player's data. In two places it then cancels an NPC's [i]interrupt package[/i] (the short behaviour an NPC switches to when something interrupts them) without letting go of that lock.
 
-Ending the package can need to [i]write[/i] the player's data, and a write waits for every reader to leave, including the very thread that is waiting. So that thread waits on itself, the main thread waits on it, and the game freezes: the picture stops and nothing responds.
-
-It was found with a debugger on a frozen game, with a follower in combat.
+Cancelling it can need to [i]write[/i] the player's data, and a write has to wait until every reader has finished, including the very thread that is waiting. That thread waits on itself, the main thread waits on it, and the game freezes. The picture stops, the sound may loop, and only Task Manager gets you out. There is no crash log, because nothing crashed.
 
 [size=3][b]The fix[/b][/size]
-Those two calls are redirected, and the interrupt package is ended a moment later on the main thread, once the lock has been released. The NPC is kept safely in memory until then. Nothing else in the game is changed, and the one-frame delay can't be seen in play.
+Those two calls are redirected. The NPC's interrupt package is cancelled a moment later (usually within a frame) on the main thread, once the lock has been released. The NPC is kept safely in memory until then. Nothing else in the game is changed.
 
 [size=3][b]Safety[/b][/size]
 [list]
-[*]Each patched spot is checked byte for byte first. If it isn't exactly what is expected (another game version, or another mod changed it), the plugin leaves it alone and says so in its log.
-[*]Nothing is written to your save, so it can be added or removed at any time.
+[*]It only runs on Skyrim [b]1.6.1170[/b]. On any other version it does nothing and says so in its log.
+[*]Both patched spots are checked byte for byte before anything is changed. If either isn't exactly what's expected (for example, another mod changed it), [b]neither[/b] is patched and the log says why.
+[*]Nothing is written to your save. It can be added or removed at any time.
+[*]No ESP, no MCM, no configuration.
 [/list]
 
 [size=3][b]Requirements[/b][/size]
 [list]
-[*]Skyrim AE [b]1.6.1170[/b]
-[*]SKSE64
-[*]Address Library for SKSE Plugins
+[*]Skyrim Anniversary Edition [b]1.6.1170[/b] (Steam)
+[*]SKSE64 for 1.6.1170
+[*]Address Library for SKSE Plugins (the Anniversary Edition file)
 [/list]
-Not for SE 1.5.97 or VR.
+[b]Not for[/b] Skyrim SE 1.5.97, Skyrim VR, GOG, or other AE versions.
+
+[size=3][b]Installation[/b][/size]
+[b]Mod Organizer 2:[/b] Install a new mod from archive, enable it, and launch through SKSE.
+[b]Vortex:[/b] drag the archive onto the Mods page, enable, deploy, and launch through SKSE.
+[b]By hand:[/b] copy [i]SKSE\Plugins\InterruptPackageDeadlockFix.dll[/i] into [i]Data\SKSE\Plugins[/i].
+
+[size=3][b]Known limitations[/b][/size]
+[list]
+[*]The NPC's interrupt package ends about a frame later than in vanilla. No visible effect has been seen, but it isn't exactly vanilla timing.
+[*]If another mod patches the same two spots first, this one stands down (it's logged). No such mod is known.
+[*]This fixes one specific freeze. Other freezes have other causes.
+[/list]
 
 [size=3][b]Compatibility[/b][/size]
-Works alongside other freeze and crash fixes. Tested with Skyrim Freeze Fix NG, which fixes a different freeze.
+Works alongside other freeze and crash fixes that don't touch the same code. The author runs it with Skyrim Freeze Fix NG, which fixes a different freeze. Load order doesn't matter.
 
-[size=3][b]Log[/b][/size]
-[code]Documents\My Games\Skyrim Special Edition\SKSE\InterruptPackageDeadlockFix.log[/code]
-"installed at ..." means both spots were patched. Each "deferred EndInterruptPackage" line is a time the fix stepped in (the first 20, then every 100th).
+[size=3][b]Troubleshooting[/b][/size]
+Log: [code]Documents\My Games\Skyrim Special Edition\SKSE\InterruptPackageDeadlockFix.log[/code]
+[list]
+[*][i]installed at ...[/i] twice: working.
+[*][i]deferred EndInterruptPackage #N ...[/i]: the fix stepped in (shown for the first 20 times, then every 100th).
+[*][i]not installed: ...[/i]: the line says why (wrong game version, or another mod patched the same spot). Nothing was changed.
+[*]No log at all: check [i]skse64.log[/i] in the same folder for "InterruptPackageDeadlockFix".
+[/list]
+If the game still freezes with this installed, please post both logs and your mod list. If you can, also make a memory dump of the frozen game: Task Manager, right-click SkyrimSE.exe, "Create memory dump file".
+
+[size=3][b]Changelog[/b][/size]
+[b]1.2.0[/b]: runs only on 1.6.1170; both spots are checked before either is patched; clearer log.
+[b]1.1.0[/b]: also covers the second spot where the same freeze happens.
+[b]1.0.0[/b]: first version.
 
 [size=3][b]Source[/b][/size]
-MIT licence. Built with CommonLibSSE-NG. Technical notes and source: [i](link to the GitHub repo)[/i]
+MIT licence. Built with CommonLibSSE-NG. Source and technical notes: [i](link to the GitHub repo, once public)[/i]
