@@ -1,6 +1,6 @@
 // Interrupt Package Deadlock Fix (Skyrim AE 1.6.1170, SKSE).
 //
-// A vanilla engine deadlock, traced in Kev's game on 2026-10-06 (Wayframe's
+// A vanilla engine deadlock, traced in the author's game on 2026-10-06 (Wayframe's
 // lock tracer, then a debugger snapshot of the frozen process):
 //
 //   An AI update on a worker thread (Address Library ID 41331) walks a list
@@ -20,7 +20,7 @@
 // in the game is changed.
 //
 // Build 2 (2026-10-07): 41331 calls EndInterruptPackage from a second place,
-// +0x36F, with the same "xor edx, edx; mov rcx, rbx; call" -- Kev's game
+// +0x36F, with the same "xor edx, edx; mov rcx, rbx; call" -- the author's game
 // froze there with build 1 installed (a debugger snapshot of the frozen
 // thread: 41331+0x374 -> 37474 -> 39187 -> 39803 -> 20164 waiting to write
 // the player's lock its own thread had read-locked at 41331+0xC8). Both
