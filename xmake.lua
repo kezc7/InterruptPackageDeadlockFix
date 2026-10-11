@@ -2,6 +2,7 @@ set_xmakever('3.0.1')
 includes('lib/commonlibsse-ng')
 
 set_project('InterruptPackageDeadlockFix')
+set_version('1.2.0')
 set_license('MIT')
 
 set_languages('c++23')
@@ -26,3 +27,11 @@ target('InterruptPackageDeadlockFix')
     add_files('src/**.cpp')
     add_includedirs('src')
     set_pcxxheader('src/pch.h')
+
+-- Unit tests for the call-site check (no Skyrim needed):
+--   xmake build -y callsite-tests && xmake run callsite-tests
+target('callsite-tests')
+    set_kind('binary')
+    set_default(false)
+    add_files('tests/CallSiteTests.cpp')
+    add_includedirs('src')
