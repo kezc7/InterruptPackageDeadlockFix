@@ -19,14 +19,14 @@
 // lock. The actor is kept alive with a reference until then. Nothing else
 // in the game is changed.
 //
-// 1.1.0 (2026-10-07): 41331 calls EndInterruptPackage from a second place,
+// Build 2 (2026-10-07): 41331 calls EndInterruptPackage from a second place,
 // +0x36F, with the same "xor edx, edx; mov rcx, rbx; call" -- Kev's game
-// froze there with 1.0.0 installed (a debugger snapshot of the frozen
+// froze there with build 1 installed (a debugger snapshot of the frozen
 // thread: 41331+0x374 -> 37474 -> 39187 -> 39803 -> 20164 waiting to write
 // the player's lock its own thread had read-locked at 41331+0xC8). Both
 // call sites are redirected; each is checked byte for byte first.
 //
-// 1.2.0 (2026-10-11): runs only on 1.6.1170; both sites are checked before
+// 1.0.0, the first release (2026-10-11): runs only on 1.6.1170; both sites are checked before
 // either is patched, and if either doesn't match neither is: deferring
 // +0x171 leaves the actor's interrupt package in place for the rest of that
 // 41331 call, and the checks after it can then lead to +0x36F, so +0x171
@@ -45,7 +45,7 @@
 namespace
 {
     constexpr std::string_view kName = "InterruptPackageDeadlockFix";
-    constexpr REL::Version     kVersion{ 1, 2, 0, 0 };
+    constexpr REL::Version     kVersion{ 1, 0, 0, 0 };
     constexpr REL::Version     kRuntime = SKSE::RUNTIME_SSE_1_6_1170;
 
     using EndInterruptPackageFn = void (*)(RE::Actor*, bool);

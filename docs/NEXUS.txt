@@ -2,7 +2,7 @@ NAME
 Interrupt Package Deadlock Fix
 
 VERSION
-1.2.0 (mark as a beta / "test" release on the Files tab)
+1.0.0 (main file)
 
 SUMMARY (one line)
 SKSE fix for a vanilla engine freeze where an AI update waits on itself forever, often with a follower in combat. AE 1.6.1170 only.
@@ -15,13 +15,13 @@ SUGGESTED CATEGORY / TAGS
 Category: Bug Fixes. Tags: SKSE, Bug Fix, Stability, AE.
 
 FILE DESCRIPTION (Files tab)
-Skyrim AE 1.6.1170 only. Public beta. Install with your mod manager.
+Skyrim AE 1.6.1170 only. Install with your mod manager.
 
 DESCRIPTION (BBCode - paste into the Nexus description editor)
 [size=4][b]Interrupt Package Deadlock Fix[/b][/size]
 Fixes a vanilla engine [b]freeze[/b] (a deadlock) in Skyrim Anniversary Edition [b]1.6.1170[/b]. It has mostly been seen with a follower in combat.
 
-[b]Public beta:[/b] the freeze and the fix were both traced with a debugger in a real game, but the fix needs more play-testing on more setups. Reports are very welcome. See Troubleshooting below.
+The freeze and the fix were both traced with a debugger in a real game, and the fix has stepped in there. Reports from more setups are welcome; see Troubleshooting below.
 
 [size=3][b]The freeze[/b][/size]
 While the game updates NPC AI on a background thread, it holds a "read" lock on the player's data. In two places it then cancels an NPC's [i]interrupt package[/i] (the short behaviour an NPC switches to when something interrupts them) without letting go of that lock.
@@ -73,9 +73,7 @@ Log: [code]Documents\My Games\Skyrim Special Edition\SKSE\InterruptPackageDeadlo
 If the game still freezes with this installed, please post both logs and your mod list. If you can, also make a memory dump of the frozen game: Task Manager, right-click SkyrimSE.exe, "Create memory dump file".
 
 [size=3][b]Changelog[/b][/size]
-[b]1.2.0[/b]: runs only on 1.6.1170; both spots are checked before either is patched; clearer log.
-[b]1.1.0[/b]: also covers the second spot where the same freeze happens.
-[b]1.0.0[/b]: first version.
+[b]1.0.0[/b]: first release.
 
 [size=3][b]Source[/b][/size]
 MIT licence. Built with CommonLibSSE-NG. Source and technical notes: [i](link to the GitHub repo, once public)[/i]

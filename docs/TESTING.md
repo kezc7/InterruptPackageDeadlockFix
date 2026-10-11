@@ -4,8 +4,8 @@ For each build before release, on Skyrim AE 1.6.1170 with SKSE 2.2.6. Keep `Inte
 
 ## 0. Load
 
-- [ ] `skse64.log` shows `plugin InterruptPackageDeadlockFix.dll (... 01020000) loaded correctly`.
-- [ ] The plugin log shows `1.2.0 loading on Skyrim 1.6.1170.0` and both `installed at SkyrimSE+76C431` and `installed at SkyrimSE+76C62F`.
+- [ ] `skse64.log` shows `plugin InterruptPackageDeadlockFix.dll (... 01000000) loaded correctly`.
+- [ ] The plugin log shows `1.0.0 loading on Skyrim 1.6.1170.0` and both `installed at SkyrimSE+76C431` and `installed at SkyrimSE+76C62F`.
 - [ ] *Negative test (optional):* on another AE runtime, the log says `not installed: only Skyrim 1.6.1170 is supported` and the game runs normally.
 
 ## 1. Followers

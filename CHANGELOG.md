@@ -1,8 +1,8 @@
 # Changelog
 
-## 1.2.0 (2026-10-11)
+## 1.0.0 (2026-10-11)
 
-Hardening before the first public release. What the fix does is unchanged.
+First public release. It defers `Actor::EndInterruptPackage` at both places in the AI pass (`41331+0x171` and `+0x36F`) to the main thread, out of the player's extra-data read lock, with these safeguards:
 
 - **Runtime check:** the plugin now runs only on Skyrim AE 1.6.1170. The check comes before `SKSE::Init`, so another runtime's Address Library is never loaded. Before this, SKSE would load it on any AE runtime, and the SE and VR loaders were accepted at query time.
 - **All-or-nothing install:** both call sites are checked before either is patched. If one doesn't match, neither is patched. Deferring only the first site keeps the NPC's interrupt package in place for the rest of the AI pass, and that can lead to the second site.
@@ -12,10 +12,9 @@ Hardening before the first public release. What the fix does is unchanged.
 - The DLL's file version is set (it was `0.0.0.0`). It now declares post-629 struct use instead of "no structs".
 - Unit tests for the call-site check, using the real 1.6.1170 bytes (`callsite-tests`).
 
-## 1.1.0 (2026-10-07)
+## Before release
 
-- Also defers the second `EndInterruptPackage` call in the AI pass (`41331+0x36F`). A game still froze there with 1.0.0 installed.
+Private development builds, not published:
 
-## 1.0.0 (2026-10-06)
-
-- First version. Defers `Actor::EndInterruptPackage` at `41331+0x171` to the main thread, out of the player's extra-data read lock.
+- **Build 2 (2026-10-07):** also defers the second `EndInterruptPackage` call in the AI pass (`41331+0x36F`). A game still froze there with 1.0.0 installed.
+- **Build 1 (2026-10-06):** first version. Defers `Actor::EndInterruptPackage` at `41331+0x171` to the main thread, out of the player's extra-data read lock.

@@ -1,4 +1,4 @@
-Interrupt Package Deadlock Fix 1.2.0 (public beta)
+Interrupt Package Deadlock Fix 1.0.0
 Skyrim AE 1.6.1170 ONLY - needs SKSE64 and Address Library for SKSE Plugins
 
 Fixes a freeze in the vanilla engine (a deadlock), often seen with a
