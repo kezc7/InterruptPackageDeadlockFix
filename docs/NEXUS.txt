@@ -1,0 +1,52 @@
+NAME
+Interrupt Package Deadlock Fix
+
+VERSION
+1.1.0
+
+SUMMARY (one line)
+Fixes a vanilla engine freeze where an AI update waits on itself forever - often seen with a follower in combat.
+
+REQUIREMENTS
+SKSE64, Address Library for SKSE Plugins. Skyrim AE 1.6.1170.
+
+SUGGESTED CATEGORY / TAGS
+Category: Bug Fixes. Tags: SKSE, Bug Fix, Stability, AE.
+
+DESCRIPTION (BBCode - paste into the Nexus description editor)
+[size=4][b]Interrupt Package Deadlock Fix[/b][/size]
+Fixes a vanilla engine freeze (a deadlock) in Skyrim AE 1.6.1170.
+
+[size=3][b]The freeze[/b][/size]
+While the game updates AI on a background thread, it holds a read lock on the player's data. In two places it then ends an NPC's [i]interrupt package[/i] - the short behaviour an NPC switches to when something interrupts them - without letting go of that lock.
+
+Ending the package can need to [i]write[/i] the player's data, and a write waits for every reader to leave, including the very thread that is waiting. So that thread waits on itself, the main thread waits on it, and the game freezes: the picture stops and nothing responds.
+
+It was found with a debugger on a frozen game, with a follower in combat.
+
+[size=3][b]The fix[/b][/size]
+Those two calls are redirected, and the interrupt package is ended a moment later on the main thread, once the lock has been released. The NPC is kept safely in memory until then. Nothing else in the game is changed, and the one-frame delay can't be seen in play.
+
+[size=3][b]Safety[/b][/size]
+[list]
+[*]Each patched spot is checked byte for byte first. If it isn't exactly what is expected (another game version, or another mod changed it), the plugin leaves it alone and says so in its log.
+[*]Nothing is written to your save, so it can be added or removed at any time.
+[/list]
+
+[size=3][b]Requirements[/b][/size]
+[list]
+[*]Skyrim AE [b]1.6.1170[/b]
+[*]SKSE64
+[*]Address Library for SKSE Plugins
+[/list]
+Not for SE 1.5.97 or VR.
+
+[size=3][b]Compatibility[/b][/size]
+Works alongside other freeze and crash fixes. Tested with Skyrim Freeze Fix NG, which fixes a different freeze.
+
+[size=3][b]Log[/b][/size]
+[code]Documents\My Games\Skyrim Special Edition\SKSE\InterruptPackageDeadlockFix.log[/code]
+"installed at ..." means both spots were patched. Each "deferred EndInterruptPackage" line is a time the fix stepped in (the first 20, then every 100th).
+
+[size=3][b]Source[/b][/size]
+MIT licence. Built with CommonLibSSE-NG. Technical notes and source: [i](link to the GitHub repo)[/i]
