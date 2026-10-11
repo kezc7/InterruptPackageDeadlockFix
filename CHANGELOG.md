@@ -4,10 +4,9 @@
 
 Hardening before the first public release. What the fix does is unchanged.
 
-- **Runtime check:** the plugin now runs only on Skyrim AE 1.6.1170. Before this, SKSE would load it on any AE runtime, and the SE and VR loaders were accepted at query time.
+- **Runtime check:** the plugin now runs only on Skyrim AE 1.6.1170. The check comes before `SKSE::Init`, so another runtime's Address Library is never loaded. Before this, SKSE would load it on any AE runtime, and the SE and VR loaders were accepted at query time.
 - **All-or-nothing install:** both call sites are checked before either is patched. If one doesn't match, neither is patched. Deferring only the first site keeps the NPC's interrupt package in place for the rest of the AI pass, and that can lead to the second site.
 - The call that gets deferred is fixed to `Actor::EndInterruptPackage`, verified at both sites, and set before patching.
-- SKSE's patch-boundary check is no longer skipped.
 - The plugin doesn't install if SKSE provides no task interface.
 - **Log:** each deferral names its call site (`+0x171` / `+0x36F`). Deferred calls skipped because the NPC was deleted are logged. A mismatch prints the bytes found. The game version is logged at startup.
 - The DLL's file version is set (it was `0.0.0.0`). It now declares post-629 struct use instead of "no structs".

@@ -184,15 +184,15 @@ SKSE_EXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::Plug
 
 extern "C" __declspec(dllexport) bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse)
 {
-    SKSE::Init(a_skse);
-    const auto runtime = REL::Module::get().version();
-    SKSE::log::info("{} {} loading on Skyrim {}", kName, kVersion.string("."), runtime.string("."));
     // UsesAddressLibrary makes SKSE accept any AE runtime; the offsets and
-    // bytes here were only checked on 1.6.1170, so refuse the rest.
-    if (runtime != kRuntime) {
-        SKSE::log::error("not installed: only Skyrim {} is supported. Nothing was changed.", kRuntime.string("."));
+    // bytes here were only checked on 1.6.1170, so refuse the rest -- before
+    // SKSE::Init, which would load the Address Library for that runtime.
+    // (SKSE's own log records the plugin as not loaded.)
+    if (a_skse->RuntimeVersion() != kRuntime) {
         return false;
     }
+    SKSE::Init(a_skse);
+    SKSE::log::info("{} {} loading on Skyrim {}", kName, kVersion.string("."), REL::Module::get().version().string("."));
     if (!Install()) {
         SKSE::log::error("the game is unchanged; the freeze this fixes can still happen");
     }

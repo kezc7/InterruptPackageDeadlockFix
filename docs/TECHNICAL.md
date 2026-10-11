@@ -22,9 +22,9 @@ Both sites were seen in debugger snapshots of a frozen game, with a follower in 
 ## The fix
 
 `SKSEPlugin_Load`:
-1. Runs `SKSE::Init`, then refuses any runtime other than 1.6.1170. `UsesAddressLibrary` makes SKSE accept every AE runtime, as shown in SKSE's `PluginManager::checkPluginCompatibility`, so this check has to happen in the plugin. `SKSEPlugin_Query`, which only the SE and VR loaders call, declines too.
+1. Refuses any runtime other than 1.6.1170 before `SKSE::Init` (which would load that runtime's Address Library). `UsesAddressLibrary` makes SKSE accept every AE runtime, as shown in SKSE's `PluginManager::checkPluginCompatibility`, so this check has to happen in the plugin. `SKSEPlugin_Query`, which only the SE and VR loaders call, declines too.
 2. Checks **both** sites before writing anything. The six bytes before each call must be `33 D2 48 8B CB E8`, and each `E8`'s rel32 must resolve to `37474`. If either check fails, nothing is patched. The check is `src/CallSite.h`, unit-tested in `tests/CallSiteTests.cpp` against the bytes above.
-3. Points the deferred call at `37474` (verified at both sites), then rewrites each `E8` with `SKSE::Trampoline::write_call<5>`. A 14-byte absolute-jump stub per site comes from SKSE's trampoline pool. The patch replaces exactly one 5-byte instruction, and CommonLib's boundary check confirms that.
+3. Points the deferred call at `37474` (verified at both sites), then rewrites each `E8` with `SKSE::Trampoline::write_call<5>`. A 14-byte absolute-jump stub per site comes from SKSE's trampoline pool. The patch replaces exactly one 5-byte instruction, the `E8` call verified in step 2.
 
 Each site gets its own thunk (`DeferredEndInterruptPackage<0x171>` / `<0x36F>`), so the log names the site. The thunk:
 - takes a `NiPointer<Actor>`. That calls `BSHandleRefObject::IncRefCount`, which is the same refcount at `actor+0x28` (masked `0x3FF`) that 41331 itself increments and decrements around this code. The actor can't be freed until the task has run and released it, and if this was the last reference, the task frees it on the main thread, as the game does elsewhere.
