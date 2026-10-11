@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1 (2026-10-11)
+
+Licence and source only; the code is unchanged.
+
+- Relicensed to GPL-3.0-or-later with the Modding Exception, the terms of CommonLibSSE-NG v7, which the plugin is built with. Earlier releases said MIT by mistake.
+- The source is public: https://github.com/kezc7/InterruptPackageDeadlockFix
+- The download includes the licence (`InterruptPackageDeadlockFix-LICENSE.txt`) and the exceptions (`InterruptPackageDeadlockFix-EXCEPTIONS.md`).
+
 ## 1.0.0 (2026-10-11)
 
 First public release. It defers `Actor::EndInterruptPackage` at both places in the AI pass (`41331+0x171` and `+0x36F`) to the main thread, out of the player's extra-data read lock, with these safeguards:

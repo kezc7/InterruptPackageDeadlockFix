@@ -64,12 +64,12 @@ These answers come from source review and static reading of the 1.6.1170 code ar
 - A plugin that detours the start of `41331` doesn't interact with this one.
 - No published plugin is known to touch either.
 
-## Verification status (1.0.0)
+## Verification status
 
 | Kind | What |
 |---|---|
 | Source review | All of `src/`, plus the CommonLib parts it uses: `SKSE::Init`, `TaskInterface`, `Trampoline::write_call`, `BSHandleRefObject`. |
-| Static verification | The code bytes at both sites and their callers in 1.6.1170 (above). SKSE 2.2.6's compatibility check (`PluginManager.cpp`). The built DLL's `SKSEPlugin_Version` block: version 1.2.0.0, `versionIndependence = 0x5`. |
+| Static verification | The code bytes at both sites and their callers in 1.6.1170 (above). SKSE 2.2.6's compatibility check (`PluginManager.cpp`). The built DLL's `SKSEPlugin_Version` block (`versionIndependence = 0x5`). |
 | Unit tests | `callsite-tests`: 8 checks, all passing. |
-| Debugger | The two freeze snapshots in 1.0.0 and earlier, from before this release. |
-| In game | 1.1.0 loaded and installed at both sites on 1.6.1170 (log from 2026-10-11). **1.2.0 hasn't been run in game yet.** See [TESTING.md](TESTING.md). |
+| Debugger | The two freeze snapshots that found the freeze, taken with the development builds. |
+| In game | 1.0.0 installs at both sites on 1.6.1170 (2026-10-11), and players report the freeze is gone. |

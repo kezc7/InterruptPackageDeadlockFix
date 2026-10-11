@@ -16,7 +16,7 @@ An SKSE plugin that fixes a vanilla engine **freeze** (a deadlock) in Skyrim Ann
 
 ## Installation
 
-**Mod Organizer 2:** *Install a new mod from archive*, pick `InterruptPackageDeadlockFix-1.0.0.zip`, enable it in the left pane, and launch through SKSE (`skse64_loader.exe`).
+**Mod Organizer 2:** *Install a new mod from archive*, pick `InterruptPackageDeadlockFix-1.0.1.zip`, enable it in the left pane, and launch through SKSE (`skse64_loader.exe`).
 
 **Vortex:** drag the zip onto the *Mods* page (or *Install From File*), enable it and deploy. Launch through SKSE.
 
@@ -90,9 +90,7 @@ xmake build -y callsite-tests && xmake run callsite-tests
 `scripts\package.ps1` builds the plugin, runs the tests and writes `dist\InterruptPackageDeadlockFix-<version>.zip`.
 
 - [docs/TECHNICAL.md](docs/TECHNICAL.md): the deadlock, the fix and its analysis
-- [docs/TESTING.md](docs/TESTING.md): the in-game regression checklist
-- [docs/NEXUS.txt](docs/NEXUS.txt): Nexus page text
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE). Built with [CommonLibSSE-NG](https://github.com/alandtse/CommonLibSSE-NG).
+GPL-3.0-or-later with the Modding Exception: see [LICENSE](LICENSE) and [EXCEPTIONS.md](EXCEPTIONS.md). These are the same terms as [CommonLibSSE-NG](https://github.com/alandtse/CommonLibSSE-NG), which Interrupt Package Deadlock Fix is built with. Source: https://github.com/kezc7/InterruptPackageDeadlockFix

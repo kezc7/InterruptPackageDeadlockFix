@@ -45,7 +45,7 @@
 namespace
 {
     constexpr std::string_view kName = "InterruptPackageDeadlockFix";
-    constexpr REL::Version     kVersion{ 1, 0, 0, 0 };
+    constexpr REL::Version     kVersion{ 1, 0, 1, 0 };
     constexpr REL::Version     kRuntime = SKSE::RUNTIME_SSE_1_6_1170;
 
     using EndInterruptPackageFn = void (*)(RE::Actor*, bool);

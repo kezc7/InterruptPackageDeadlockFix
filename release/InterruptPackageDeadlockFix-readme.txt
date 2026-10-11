@@ -1,4 +1,4 @@
-Interrupt Package Deadlock Fix 1.0.0
+Interrupt Package Deadlock Fix 1.0.1
 Skyrim AE 1.6.1170 ONLY - needs SKSE64 and Address Library for SKSE Plugins
 
 Fixes a freeze in the vanilla engine (a deadlock), often seen with a
@@ -44,4 +44,6 @@ same folder.
 
 Not for Skyrim SE 1.5.97, VR, GOG or other AE versions.
 
-MIT licence. Source and technical notes: see the mod page.
+GPL-3.0-or-later with the Modding Exception (InterruptPackageDeadlockFix-LICENSE.txt
+and InterruptPackageDeadlockFix-EXCEPTIONS.md). Source and technical notes:
+https://github.com/kezc7/InterruptPackageDeadlockFix

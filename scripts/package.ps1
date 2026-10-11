@@ -30,6 +30,8 @@ $plugins = Join-Path $stage 'SKSE\Plugins'
 New-Item -ItemType Directory -Force $plugins | Out-Null
 Copy-Item $dll $plugins
 Copy-Item (Join-Path $root "release\$name-readme.txt") $plugins
+Copy-Item (Join-Path $root 'LICENSE') (Join-Path $plugins 'InterruptPackageDeadlockFix-LICENSE.txt')
+Copy-Item (Join-Path $root 'EXCEPTIONS.md') (Join-Path $plugins 'InterruptPackageDeadlockFix-EXCEPTIONS.md')
 
 $zip = Join-Path $root "dist\$name-$version.zip"
 if (Test-Path $zip) { Remove-Item -Force $zip }
