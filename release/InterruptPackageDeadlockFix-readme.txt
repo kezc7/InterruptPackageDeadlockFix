@@ -1,5 +1,10 @@
 Interrupt Package Deadlock Fix 1.0.1
-Skyrim AE 1.6.1170 ONLY - needs SKSE64 and Address Library for SKSE Plugins
+Skyrim AE 1.6.1170 / experimental SE 1.5.97 - matching SKSE64 and Address Library
+
+DRAFT: SE dialogue-cleanup gameplay validation is still pending. No new
+release version is claimed. The SE branch defers three calls (including
+EndDialogue), validates all three before patching, and drops pending work
+across save-load/new-game signals. See docs/SE-DIALOGUE-DEADLOCK.md in source.
 
 Fixes a freeze in the vanilla engine (a deadlock), often seen with a
 follower in combat.
@@ -20,7 +25,7 @@ released. The NPC is kept safely in memory until then. Nothing else in the
 game is changed.
 
 SAFETY
-- Runs only on Skyrim 1.6.1170; on any other version it does nothing and
+- Runs only on Skyrim 1.6.1170 and 1.5.97; on any other version it does nothing and
   says so in its log.
 - Both patched spots are checked byte for byte first. If either isn't
   exactly what is expected (e.g. another mod changed it), neither is
@@ -36,13 +41,15 @@ Skyrim's Data\SKSE\Plugins folder. Remove it the same way.
 LOG
 Documents\My Games\Skyrim Special Edition\SKSE\InterruptPackageDeadlockFix.log
 - "installed at ..." (twice): working.
+- On SE: three "installed 40321+..." lines (+172, +34C, +36A) are required.
 - "deferred EndInterruptPackage #N ...": the fix stepped in (the first 20
   times per spot, then every 100th).
 - "not installed: ...": the reason follows; nothing was changed.
 No log at all? Look for "InterruptPackageDeadlockFix" in skse64.log in the
 same folder.
 
-Not for Skyrim SE 1.5.97, VR, GOG or other AE versions.
+Not for VR, GOG or other SE/AE versions. Do not combine with the private
+ActorCleanupDeadlockFix.dll candidate: its call-site patches overlap.
 
 GPL-3.0-or-later with the Modding Exception (InterruptPackageDeadlockFix-LICENSE.txt
 and InterruptPackageDeadlockFix-EXCEPTIONS.md). Source and technical notes:
