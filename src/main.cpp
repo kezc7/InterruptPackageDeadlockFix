@@ -1,4 +1,6 @@
-// Interrupt Package Deadlock Fix (Skyrim AE 1.6.1170, SKSE).
+// Interrupt Package Deadlock Fix (Skyrim AE 1.6.1170 / SE 1.5.97, SKSE).
+// The SE dialogue branch and its evidence are isolated in SEFix.cpp and
+// docs/SE-DIALOGUE-DEADLOCK.md. Gameplay validation of that addition is pending.
 //
 // A vanilla engine deadlock, traced in the author's game on 2026-10-06 (Wayframe's
 // lock tracer, then a debugger snapshot of the frozen process):
@@ -36,17 +38,28 @@
 #include "pch.h"
 
 #include "CallSite.h"
+#include "SEFix.h"
 
 #include <atomic>
 #include <format>
 #include <iterator>
 #include <string>
 
+#if !defined(ENABLE_SKYRIM_SE) || !defined(ENABLE_SKYRIM_AE)
+#error Configure CommonLib with both --skyrim_se=y and --skyrim_ae=y for this dual-runtime plugin.
+#endif
+
 namespace
 {
     constexpr std::string_view kName = "InterruptPackageDeadlockFix";
     constexpr REL::Version     kVersion{ 1, 0, 1, 0 };
     constexpr REL::Version     kRuntime = SKSE::RUNTIME_SSE_1_6_1170;
+    constexpr REL::Version     kSERuntime{ 1, 5, 97, 0 };
+
+    bool SupportedRuntime(REL::Version a_version)
+    {
+        return a_version == kRuntime || a_version == kSERuntime;
+    }
 
     using EndInterruptPackageFn = void (*)(RE::Actor*, bool);
     EndInterruptPackageFn g_endInterruptPackage = nullptr;
@@ -111,6 +124,9 @@ namespace
     // Both call sites are checked before either is patched: all or nothing.
     bool Install()
     {
+        if (REL::Module::get().version() == kSERuntime) {
+            return SEFix::Install();
+        }
         if (!SKSE::GetTaskInterface()) {
             SKSE::log::error("not installed: SKSE gave no task interface");
             return false;
@@ -172,23 +188,23 @@ namespace
 
 SKSE_PLUGIN_VERSION = MakePluginVersionData();
 
-// Only the SE and VR loaders call this (the AE loader reads
-// SKSEPlugin_Version), and this build is for AE 1.6.1170 only: decline.
+// SE accepts only the captured 1.5.97 runtime. VR and other runtimes decline.
 SKSE_EXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::PluginInfo* a_info)
 {
+    if (!a_skse || !a_info) {
+        return false;
+    }
     a_info->infoVersion = SKSE::PluginInfo::kVersion;
     a_info->name = kName.data();
     a_info->version = kVersion.pack();
-    return !a_skse->IsEditor() && a_skse->RuntimeVersion() == kRuntime;
+    return !a_skse->IsEditor() && SupportedRuntime(a_skse->RuntimeVersion());
 }
 
 extern "C" __declspec(dllexport) bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse)
 {
-    // UsesAddressLibrary makes SKSE accept any AE runtime; the offsets and
-    // bytes here were only checked on 1.6.1170, so refuse the rest -- before
-    // SKSE::Init, which would load the Address Library for that runtime.
+    // Refuse unsupported runtimes before SKSE::Init loads their Address Library.
     // (SKSE's own log records the plugin as not loaded.)
-    if (a_skse->RuntimeVersion() != kRuntime) {
+    if (!a_skse || a_skse->IsEditor() || !SupportedRuntime(a_skse->RuntimeVersion())) {
         return false;
     }
     SKSE::Init(a_skse);

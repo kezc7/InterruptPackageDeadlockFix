@@ -18,9 +18,17 @@ xmake build -P . -y callsite-tests
 if ($LASTEXITCODE -ne 0) { throw 'test build failed' }
 xmake run -P . callsite-tests
 if ($LASTEXITCODE -ne 0) { throw 'unit tests failed' }
+xmake build -P . -y se-cleanup-tests
+if ($LASTEXITCODE -ne 0) { throw 'SE test build failed' }
+xmake run -P . se-cleanup-tests
+if ($LASTEXITCODE -ne 0) { throw 'SE tests failed' }
 
 $dll = Join-Path $root "build\windows\x64\release\$name.dll"
 if (-not (Test-Path $dll)) { throw "no release DLL at $dll (configure with -m release)" }
+xmake build -P . -y native-cleanup-tests
+if ($LASTEXITCODE -ne 0) { throw 'native test build failed' }
+xmake run -P . native-cleanup-tests $dll
+if ($LASTEXITCODE -ne 0) { throw 'native tests failed' }
 $fileVersion = (Get-Item $dll).VersionInfo.FileVersion
 if ($fileVersion -ne "$version.0") { throw "DLL is $fileVersion, xmake.lua says $version" }
 

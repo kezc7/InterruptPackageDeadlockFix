@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased (draft; gameplay validation pending)
+
+- Add a guarded SE 1.5.97 path covering both interrupt-package calls and the
+  additional virtual `EndDialogue` call at `40321+0x34C`, which was observed
+  attempting a write lock while its ancestor held the player's read lock.
+- Preserve the existing AE path; do not infer an AE dialogue-call offset.
+- Add sanitized SE diagnostic evidence, instruction-window and deferral tests,
+  and optional Windows native trampoline/loader tests.
+- Retain pending actors safely and invalidate SE work across save loads/new games.
+- No post-fix gameplay success is claimed; this is not a release announcement.
+
 ## 1.0.1 (2026-10-11)
 
 Licence and source only; the code is unchanged.

@@ -2,17 +2,23 @@
 
 An SKSE plugin that fixes a vanilla engine **freeze** (a deadlock) in Skyrim Anniversary Edition **1.6.1170**. It has mostly been seen with a follower in combat.
 
+> **Draft addition: SE 1.5.97 dialogue cleanup. Gameplay validation is pending.**
+> This branch also covers the two interrupt-package calls and an additional
+> `EndDialogue` call observed under the same read lock on SE 1.5.97. The AE
+> implementation is retained; no AE dialogue offset is assumed. See the
+> [sanitized diagnosis, tests, and limitations](docs/SE-DIALOGUE-DEADLOCK.md).
+
 > **Status: 1.0.0, first public release.** The freeze and the fix were both traced with a debugger in a real game, and the fix has stepped in there. Reports from more setups are welcome. See [Known limitations](#known-limitations).
 
 ## Requirements
 
 | | |
 |---|---|
-| Skyrim | **AE 1.6.1170 only** (Steam). Any other runtime is refused, and the plugin changes nothing there. |
-| [SKSE64](https://skse.silverlock.org/) | The build for 1.6.1170 (2.2.6). |
-| [Address Library for SKSE Plugins](https://www.nexusmods.com/skyrimspecialedition/mods/32444) | The "All in one (Anniversary Edition)" file. |
+| Skyrim | **AE 1.6.1170** or experimental **SE 1.5.97** (Steam). Other runtimes are refused. |
+| [SKSE64](https://skse.silverlock.org/) | The build matching your SE or AE runtime. |
+| [Address Library for SKSE Plugins](https://www.nexusmods.com/skyrimspecialedition/mods/32444) | The files matching your game runtime (SE or AE). |
 
-**Not supported:** Skyrim SE 1.5.97, Skyrim VR, GOG, and every other AE runtime (1.6.640, 1.6.1130 and so on). The patched code was only checked against 1.6.1170.
+**Not supported:** Skyrim VR, GOG, and other SE/AE runtimes. The new dialogue call was checked only against SE 1.5.97; its gameplay validation is pending.
 
 ## Installation
 
@@ -34,9 +40,10 @@ There's no ESP, no MCM and no configuration. It doesn't write to your save, so i
 
 ## Safety checks
 
-- **Runtime:** the plugin loads only on 1.6.1170. Older loaders (SE and VR) are declined at query time. Other AE runtimes are declined at load, with a line in the log.
+- **Runtime:** the plugin loads only on 1.6.1170 and 1.5.97. Other runtimes are declined before `SKSE::Init`.
 - **Call sites:** before anything is written, both sites must be exactly `xor edx, edx; mov rcx, rbx; call <Actor::EndInterruptPackage>`. If either one isn't (another mod got there first, or the game is different), **neither** is patched and the log says why.
 - **Actor lifetime:** the NPC is held through the game's own reference count until the deferred call has run. If it has been deleted by then, the call is skipped.
+- **SE branch:** all three sites and their surrounding captured code are validated before any patch. The added dialogue call uses a six-byte trampoline and retains virtual dispatch. Pending SE work is invalidated on save-load/new-game signals.
 
 ## Known limitations
 
@@ -82,12 +89,20 @@ Requires Visual Studio 2022 (MSVC) and [xmake](https://xmake.io) 3.0.1+.
 
 ```
 git submodule update --init --recursive
-xmake f -P . -y -p windows -a x64 -m release --skyrim_ae=y --skyrim_se=n --skyrim_vr=n
+xmake f -P . -y -p windows -a x64 -m release --skyrim_ae=y --skyrim_se=y --skyrim_vr=n
 xmake build -y InterruptPackageDeadlockFix
 xmake build -y callsite-tests && xmake run callsite-tests
+xmake build -y se-cleanup-tests && xmake run se-cleanup-tests
+xmake build -y native-cleanup-tests
+xmake run native-cleanup-tests <absolute-path-to-built-InterruptPackageDeadlockFix.dll>
 ```
 
 `scripts\package.ps1` builds the plugin, runs the tests and writes `dist\InterruptPackageDeadlockFix-<version>.zip`.
+
+Do not enable the private `ActorCleanupDeadlockFix.dll` candidate alongside this
+branch's DLL: they overlap, and the byte guards will reject whichever loads
+after the other. No release-version bump or release binary is included in this
+draft contribution.
 
 - [docs/TECHNICAL.md](docs/TECHNICAL.md): the deadlock, the fix and its analysis
 
