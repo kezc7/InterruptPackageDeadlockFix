@@ -2,7 +2,7 @@ set_xmakever('3.0.1')
 includes('lib/commonlibsse-ng')
 
 set_project('InterruptPackageDeadlockFix')
-set_version('1.0.1')
+set_version('1.1.0')
 set_license('GPL-3.0-or-later')
 
 set_languages('c++23')
@@ -12,8 +12,8 @@ set_toolset('msvc', 'ninja')
 
 add_rules('mode.debug', 'mode.releasedbg', 'mode.release')
 
--- Skyrim AE 1.6.1170. Configure once with:
---   xmake f -P . -y -p windows -a x64 -m release --skyrim_ae=y --skyrim_se=n --skyrim_vr=n
+-- Skyrim AE 1.6.1170 and SE 1.5.97, one DLL. Configure once with:
+--   xmake f -P . -y -p windows -a x64 -m release --skyrim_ae=y --skyrim_se=y --skyrim_vr=n
 target('InterruptPackageDeadlockFix')
     add_deps('commonlibsse-ng')
     add_rules('commonlib.plugin')

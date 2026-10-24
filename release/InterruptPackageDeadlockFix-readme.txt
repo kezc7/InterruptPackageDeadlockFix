@@ -1,5 +1,6 @@
-Interrupt Package Deadlock Fix 1.0.1
-Skyrim AE 1.6.1170 ONLY - needs SKSE64 and Address Library for SKSE Plugins
+Interrupt Package Deadlock Fix 1.1.0
+Skyrim AE 1.6.1170 or SE 1.5.97 - needs SKSE64 and Address Library for SKSE
+Plugins (the files for your game version)
 
 Fixes a freeze in the vanilla engine (a deadlock), often seen with a
 follower in combat.
@@ -20,7 +21,7 @@ released. The NPC is kept safely in memory until then. Nothing else in the
 game is changed.
 
 SAFETY
-- Runs only on Skyrim 1.6.1170; on any other version it does nothing and
+- Runs only on Skyrim 1.6.1170 and 1.5.97; on any other version it does nothing and
   says so in its log.
 - Both patched spots are checked byte for byte first. If either isn't
   exactly what is expected (e.g. another mod changed it), neither is
@@ -42,7 +43,7 @@ Documents\My Games\Skyrim Special Edition\SKSE\InterruptPackageDeadlockFix.log
 No log at all? Look for "InterruptPackageDeadlockFix" in skse64.log in the
 same folder.
 
-Not for Skyrim SE 1.5.97, VR, GOG or other AE versions.
+Not for Skyrim VR, GOG or other versions. SE 1.5.97 support is new in 1.1.0.
 
 GPL-3.0-or-later with the Modding Exception (InterruptPackageDeadlockFix-LICENSE.txt
 and InterruptPackageDeadlockFix-EXCEPTIONS.md). Source and technical notes:

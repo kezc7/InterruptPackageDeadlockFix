@@ -1,22 +1,22 @@
 # Interrupt Package Deadlock Fix
 
-An SKSE plugin that fixes a vanilla engine **freeze** (a deadlock) in Skyrim Anniversary Edition **1.6.1170**. It has mostly been seen with a follower in combat.
+An SKSE plugin that fixes a vanilla engine **freeze** (a deadlock) in Skyrim Anniversary Edition **1.6.1170** and Special Edition **1.5.97**. It has mostly been seen with a follower in combat.
 
-> **Status: 1.0.0, first public release.** The freeze and the fix were both traced with a debugger in a real game, and the fix has stepped in there. Reports from more setups are welcome. See [Known limitations](#known-limitations).
+> **Status:** on AE 1.6.1170, released since 1.0.0. The freeze and the fix were both traced with a debugger in a real game, and the fix has stepped in there. **SE 1.5.97 support is new in 1.1.0:** the same code was found and checked in a running 1.5.97 game, but it has had far less play there. Reports from more setups are welcome. See [Known limitations](#known-limitations).
 
 ## Requirements
 
 | | |
 |---|---|
-| Skyrim | **AE 1.6.1170 only** (Steam). Any other runtime is refused, and the plugin changes nothing there. |
-| [SKSE64](https://skse.silverlock.org/) | The build for 1.6.1170 (2.2.6). |
-| [Address Library for SKSE Plugins](https://www.nexusmods.com/skyrimspecialedition/mods/32444) | The "All in one (Anniversary Edition)" file. |
+| Skyrim | **AE 1.6.1170** or **SE 1.5.97** (Steam). Any other runtime is refused, and the plugin changes nothing there. |
+| [SKSE64](https://skse.silverlock.org/) | The build for your game: 2.2.6 for 1.6.1170, 2.0.20 for 1.5.97. |
+| [Address Library for SKSE Plugins](https://www.nexusmods.com/skyrimspecialedition/mods/32444) | The file for your game: "All in one (Anniversary Edition)" for 1.6.1170, "All in one (Special Edition)" for 1.5.97. |
 
-**Not supported:** Skyrim SE 1.5.97, Skyrim VR, GOG, and every other AE runtime (1.6.640, 1.6.1130 and so on). The patched code was only checked against 1.6.1170.
+**Not supported:** Skyrim VR, GOG, and every other runtime (1.6.640, 1.6.1130 and so on). The patched code was only checked against 1.6.1170 and 1.5.97. One DLL covers both.
 
 ## Installation
 
-**Mod Organizer 2:** *Install a new mod from archive*, pick `InterruptPackageDeadlockFix-1.0.1.zip`, enable it in the left pane, and launch through SKSE (`skse64_loader.exe`).
+**Mod Organizer 2:** *Install a new mod from archive*, pick `InterruptPackageDeadlockFix-1.1.0.zip`, enable it in the left pane, and launch through SKSE (`skse64_loader.exe`).
 
 **Vortex:** drag the zip onto the *Mods* page (or *Install From File*), enable it and deploy. Launch through SKSE.
 
@@ -30,11 +30,11 @@ There's no ESP, no MCM and no configuration. It doesn't write to your save, so i
 
 **The fix:** those two calls are redirected. The NPC's interrupt package is cancelled a moment later on the main thread, once the AI update has let go of the lock. The NPC is kept in memory until then. Nothing else is changed.
 
-**Technical summary:** `41331` (an AI pass run on a worker thread) read-locks `PlayerCharacter+0x88` (`BSReadWriteLock`) at `+0xC8`. It then calls `Actor::EndInterruptPackage` (`37474`) at `+0x171` and `+0x36F` while still holding the lock. `37474 → 39187 → 39803 → 20164` write-locks the same lock, and `BSReadWriteLock`'s writer waits for the reader count to reach zero, so the thread waits on its own read. The plugin rewrites both `E8` calls so they queue an SKSE main-thread task, which calls `37474` with the same arguments. Full notes: [docs/TECHNICAL.md](docs/TECHNICAL.md).
+**Technical summary:** `41331` (an AI pass run on a worker thread) read-locks `PlayerCharacter+0x88` (`BSReadWriteLock`) at `+0xC8`. It then calls `Actor::EndInterruptPackage` (`37474`) at `+0x171` and `+0x36F` while still holding the lock. `37474 → 39187 → 39803 → 20164` write-locks the same lock, and `BSReadWriteLock`'s writer waits for the reader count to reach zero, so the thread waits on its own read. The plugin rewrites both `E8` calls so they queue an SKSE main-thread task, which calls `37474` with the same arguments. On SE 1.5.97 the same function is `40321`, with the calls at `+0x172` and `+0x36A` and `EndInterruptPackage` at `36475`. Full notes: [docs/TECHNICAL.md](docs/TECHNICAL.md).
 
 ## Safety checks
 
-- **Runtime:** the plugin loads only on 1.6.1170. Older loaders (SE and VR) are declined at query time. Other AE runtimes are declined at load, with a line in the log.
+- **Runtime:** the plugin loads only on 1.6.1170 and 1.5.97. The SE loader is declined at query time for anything but 1.5.97, and VR is always declined. Other AE runtimes are declined at load, before the plugin does anything.
 - **Call sites:** before anything is written, both sites must be exactly `xor edx, edx; mov rcx, rbx; call <Actor::EndInterruptPackage>`. If either one isn't (another mod got there first, or the game is different), **neither** is patched and the log says why.
 - **Actor lifetime:** the NPC is held through the game's own reference count until the deferred call has run. If it has been deleted by then, the call is skipped.
 
@@ -62,13 +62,12 @@ Documents\My Games\Skyrim Special Edition\SKSE\InterruptPackageDeadlockFix.log
 
 | Log says | Meaning |
 |---|---|
-| `installed at SkyrimSE+76C431 (41331+0x171 …)` and `… +0x36F …` | Working. Both sites are patched. |
-| `+0x171: deferred EndInterruptPackage #N for XXXXXXXX …` | The fix stepped in (shown for the first 20, then every 100th, per site). `XXXXXXXX` is the NPC's form ID. |
+| `installed at SkyrimSE+76C431 (41331+0x171 …)` and `… +0x36F …` (on 1.5.97: `40321+0x172` and `+0x36A`) | Working. Both sites are patched. |
+| `41331+0x171: deferred EndInterruptPackage #N for XXXXXXXX …` | The fix stepped in (shown for the first 20, then every 100th, per site). `XXXXXXXX` is the NPC's form ID. |
 | `skipped deferred EndInterruptPackage … deleted` | The NPC was deleted before the main thread got to it. This is harmless. |
-| `not installed: only Skyrim 1.6.1170 is supported` | Wrong game version. Nothing was changed. |
-| `not installed: 41331+0x… doesn't match` / `doesn't go to Actor::EndInterruptPackage` | Another mod patched the same spot first. Nothing was changed. Please report the mod. |
+| `not installed: 41331+0x… doesn't match` (or `40321+0x…`) / `doesn't go to Actor::EndInterruptPackage` | Another mod patched the same spot first. Nothing was changed. Please report the mod. |
 
-If there is **no log at all**, check `skse64.log` in the same folder for an `InterruptPackageDeadlockFix` line. It will say whether SKSE loaded the plugin, or why it didn't (Address Library missing, wrong game version).
+If there is **no log at all**, check `skse64.log` in the same folder for an `InterruptPackageDeadlockFix` line. It will say whether SKSE loaded the plugin, or why it didn't. On an unsupported game version it says the plugin *reported as incompatible during load* (or was declined at query time), and the plugin changed nothing. A missing Address Library is reported there too.
 
 **Reporting a freeze while this is installed:** please include this log, `skse64.log`, your mod list and, if you can, a full memory dump of the frozen process (Task Manager → right-click `SkyrimSE.exe` → *Create memory dump file*).
 
@@ -82,7 +81,7 @@ Requires Visual Studio 2022 (MSVC) and [xmake](https://xmake.io) 3.0.1+.
 
 ```
 git submodule update --init --recursive
-xmake f -P . -y -p windows -a x64 -m release --skyrim_ae=y --skyrim_se=n --skyrim_vr=n
+xmake f -P . -y -p windows -a x64 -m release --skyrim_ae=y --skyrim_se=y --skyrim_vr=n
 xmake build -y InterruptPackageDeadlockFix
 xmake build -y callsite-tests && xmake run callsite-tests
 ```

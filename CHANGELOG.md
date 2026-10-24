@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0 (unreleased)
+
+- **Skyrim SE 1.5.97 support**, in the same DLL. The AI pass is `40321` there, with the same two calls under the player's read lock at `+0x172` and `+0x36A`. They were found in a running 1.5.97 game with the probe in `tools/probe` and checked against AE's layout. The same byte checks, all-or-nothing install and exact version check apply.
+- The log names the function as well as the offset (`41331+0x171`, `40321+0x172`).
+- The third `EndInterruptPackage` call in the same function (AE `+0x7FE`, SE `+0x848`) is deliberately left alone. It holds the actor's own read lock, not the player's (see `docs/TECHNICAL.md`).
+- Unit tests for the 1.5.97 call sites.
+
 ## 1.0.1 (2026-10-11)
 
 Licence and source only; the code is unchanged.

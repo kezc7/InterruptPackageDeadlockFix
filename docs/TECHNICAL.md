@@ -22,7 +22,7 @@ Both sites were seen in debugger snapshots of a frozen game, with a follower in 
 ## The fix
 
 `SKSEPlugin_Load`:
-1. Refuses any runtime other than 1.6.1170 before `SKSE::Init` (which would load that runtime's Address Library). `UsesAddressLibrary` makes SKSE accept every AE runtime, as shown in SKSE's `PluginManager::checkPluginCompatibility`, so this check has to happen in the plugin. `SKSEPlugin_Query`, which only the SE and VR loaders call, declines too.
+1. Refuses any runtime other than 1.6.1170 and 1.5.97 before `SKSE::Init` (which would load that runtime's Address Library). `UsesAddressLibrary` makes SKSE accept every AE runtime, as shown in SKSE's `PluginManager::checkPluginCompatibility`, so this check has to happen in the plugin. `SKSEPlugin_Query`, which only the SE and VR loaders call, accepts 1.5.97 and nothing else.
 2. Checks **both** sites before writing anything. The six bytes before each call must be `33 D2 48 8B CB E8`, and each `E8`'s rel32 must resolve to `37474`. If either check fails, nothing is patched. The check is `src/CallSite.h`, unit-tested in `tests/CallSiteTests.cpp` against the bytes above.
 3. Points the deferred call at `37474` (verified at both sites), then rewrites each `E8` with `SKSE::Trampoline::write_call<5>`. A 14-byte absolute-jump stub per site comes from SKSE's trampoline pool. The patch replaces exactly one 5-byte instruction, the `E8` call verified in step 2.
 
@@ -64,12 +64,38 @@ These answers come from source review and static reading of the 1.6.1170 code ar
 - A plugin that detours the start of `41331` doesn't interact with this one.
 - No published plugin is known to touch either.
 
+## SE 1.5.97
+
+The same code exists in 1.5.97. It was found in the running game with `tools/probe`, a log-only plugin that lists every caller of `EndInterruptPackage` and the lock calls around it, and dumps the function.
+
+| | AE 1.6.1170 | SE 1.5.97 |
+|---|---|---|
+| AI pass | `41331` (RVA `0x76C2C0`) | `40321` (RVA `0x6D7330`) |
+| `EndInterruptPackage` | `37474` (`0x6745C0`) | `36475` (`0x5E27F0`) |
+| Player singleton, then `LockForRead` | `+0xB1`, `+0xC3` (`add rcx, 0x88`) | `+0xB4`, `+0xC3` (`sub rcx, -0x80`; `BaseExtraList` is 8 bytes smaller before 1.6.629) |
+| First call | `+0x171`: `33 D2 48 8B CB E8 8A 81 F0 FF` | `+0x172`: `33 D2 48 8B CB E8 49 B3 F0 FF` |
+| Second call | `+0x36F`: `33 D2 48 8B CB E8 8C 7F F0 FF` | `+0x36A`: `33 D2 48 8B CB E8 51 B1 F0 FF` |
+| `UnlockForRead` | `+0x503` | `+0x4E7` |
+
+The instruction sequences around both calls match (`cmp; jne; xor edx, edx; mov rcx, rbx; call; nop; test rdi, rdi` and `test al, al; je; …; call; jmp +0x16; mov rdx, rbx; mov rcx, rsi`). The plugin picks the row for the running game. Everything else is the same.
+
+## The third call
+
+The function makes a third `EndInterruptPackage` call (AE `+0x7FE`, SE `+0x848`). It isn't deferred, because it isn't the same deadlock.
+
+- **What that code does:** after the process-list loop (`allProcesses` at `ProcessLists+0x90`, under the player's read lock, released at `+0x503`), a second loop walks `ProcessLists::tempShouldMoves` (`+0x158`). For each actor in it, the loop read-locks **that actor's own** extra data (`lea rcx, [rdi+0x88]` at `+0x5F0`, `LockForRead` at `+0x5FB`), and may call `EndInterruptPackage(rdi)` at `+0x7FE`. It unlocks at `+0x87D`.
+- **What ending the package writes:** `37474 → 39187(process, actor)`. `39187` reads a handle from the actor's extra data (`11725`) and passes it to `39803`. `39803` looks up the reference behind that handle and calls `20164` on it. `20164` write-locks *that* reference's extra data (`LockForWrite` on `ref+0x88`, then `AddChange(0x80000000)`). For a follower, the stored reference is the player. That is the traced freeze: the first loop holds the player's read lock.
+- **So:** the third call can only wait on itself if the actor's extra data refers to the actor itself, because the only lock held then is the actor's own. Nothing points to that happening, and no freeze there has been seen. Deferring it would change vanilla timing for no demonstrated gain, so it is left alone. If a freeze is ever traced there, the same mechanism applies.
+
+These results come from function dumps of the running game (AE: 41331, 37474, 39187, 39803, 20164; SE: 40321, 36475), read with the probe and disassembled offline.
+
 ## Verification status
 
 | Kind | What |
 |---|---|
 | Source review | All of `src/`, plus the CommonLib parts it uses: `SKSE::Init`, `TaskInterface`, `Trampoline::write_call`, `BSHandleRefObject`. |
 | Static verification | The code bytes at both sites and their callers in 1.6.1170 (above). SKSE 2.2.6's compatibility check (`PluginManager.cpp`). The built DLL's `SKSEPlugin_Version` block (`versionIndependence = 0x5`). |
-| Unit tests | `callsite-tests`: 8 checks, all passing. |
+| Probe (log-only, in game) | Every caller of `EndInterruptPackage` on AE 1.6.1170 and SE 1.5.97, with lock timelines. Only 41331 / 40321 call it under a read lock taken just before. Function dumps for the analysis above. |
+| Unit tests | `callsite-tests`: 12 checks (AE and SE sites), all passing. |
 | Debugger | The two freeze snapshots that found the freeze, taken with the development builds. |
-| In game | 1.0.0 installs at both sites on 1.6.1170 (2026-10-11), and players report the freeze is gone. |
+| In game | 1.0.0 installs at both sites on 1.6.1170 (2026-10-11), and players report the freeze is gone. 1.1.0 on 1.5.97: not yet run. |
