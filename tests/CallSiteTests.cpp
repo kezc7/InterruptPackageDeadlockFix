@@ -33,6 +33,18 @@ namespace
 
     static_assert(sizeof(kSite171) == CallSite::kWindow);
     static_assert(sizeof(kSite36F) == CallSite::kWindow);
+
+    // SE 1.5.97: 40321 = 0x6D7330, 36475 = 0x5E27F0 (read from the running
+    // game by tools/probe).
+    constexpr std::uintptr_t kFunctionSE = kBase + 0x6D7330;  // 40321
+    constexpr std::uintptr_t kTargetSE = kBase + 0x5E27F0;    // 36475
+    // 40321+0x16D: xor edx, edx; mov rcx, rbx; call 36475 (E8 at +0x172)
+    constexpr std::uint8_t kSite172SE[] = { 0x33, 0xD2, 0x48, 0x8B, 0xCB, 0xE8, 0x49, 0xB3, 0xF0, 0xFF };
+    // 40321+0x365: the same, E8 at +0x36A
+    constexpr std::uint8_t kSite36ASE[] = { 0x33, 0xD2, 0x48, 0x8B, 0xCB, 0xE8, 0x51, 0xB1, 0xF0, 0xFF };
+
+    static_assert(sizeof(kSite172SE) == CallSite::kWindow);
+    static_assert(sizeof(kSite36ASE) == CallSite::kWindow);
 }
 
 int main()
@@ -42,6 +54,10 @@ int main()
 
     Check(Verify(kSite171, kFunction + 0x171, kTarget) == Result::kOk, "+0x171 as shipped in 1.6.1170 verifies");
     Check(Verify(kSite36F, kFunction + 0x36F, kTarget) == Result::kOk, "+0x36F as shipped in 1.6.1170 verifies");
+    Check(Verify(kSite172SE, kFunctionSE + 0x172, kTargetSE) == Result::kOk, "SE +0x172 as shipped in 1.5.97 verifies");
+    Check(Verify(kSite36ASE, kFunctionSE + 0x36A, kTargetSE) == Result::kOk, "SE +0x36A as shipped in 1.5.97 verifies");
+    Check(Verify(kSite172SE, kFunctionSE + 0x172, kTarget) == Result::kWrongTarget, "SE bytes against AE's EndInterruptPackage: wrong target");
+    Check(Verify(kSite171, kFunctionSE + 0x172, kTargetSE) == Result::kWrongTarget, "AE bytes at the SE site: wrong target");
 
     // The rel32 is relative to the site: the same bytes at the wrong offset
     // don't resolve to 37474.
